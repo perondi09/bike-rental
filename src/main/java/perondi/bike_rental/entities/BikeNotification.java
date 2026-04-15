@@ -9,16 +9,18 @@ import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.MongoId;
 import java.time.LocalDateTime;
 
-@Document(collection = "bikes")
+@Document(collection = "bike_notifications")
 @Getter
 @Setter
 @Builder
 @AllArgsConstructor
 @NoArgsConstructor
-public class Bike {
+public class BikeNotification {
 
     @MongoId
     private String id;
+
+    private String bikeId;
 
     private String model;
 
@@ -27,8 +29,8 @@ public class Bike {
     private String plate;
 
     @Builder.Default
-    private LocalDateTime createdAt = LocalDateTime.now();
+    private LocalDateTime receivedAt = LocalDateTime.now();
 
     @Builder.Default
-    private LocalDateTime updatedAt = LocalDateTime.now();
+    private LocalDateTime createdAt = LocalDateTime.now();
 }

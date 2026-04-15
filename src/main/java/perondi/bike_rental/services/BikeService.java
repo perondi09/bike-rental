@@ -1,32 +1,46 @@
 package perondi.bike_rental.services;
 
-import org.springframework.data.mongodb.core.MongoTemplate;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import perondi.bike_rental.dto.request.BikeRequest;
+import perondi.bike_rental.dto.response.BikeResponse;
 import perondi.bike_rental.entities.Bike;
-import perondi.bike_rental.listeners.dto.BikeRegisterEvent;
+import perondi.bike_rental.messaging.BikeEventPublisher;
 import perondi.bike_rental.repositories.BikeRepository;
 
+@Slf4j
 @Service
-
+@RequiredArgsConstructor
 public class BikeService {
 
     private final BikeRepository bikeRepository;
-    private final MongoTemplate mongoTemplate;
+    private final BikeEventPublisher bikeEventPublisher;
 
-    public BikeService(BikeRepository bikeRepository, MongoTemplate mongoTemplate) {
-        this.bikeRepository = bikeRepository;
-        this.mongoTemplate = mongoTemplate;
-    }
+    public BikeResponse registerBike(BikeRequest request) {
+        log.info("Registering bike with year: [{}], model: [{}]", request.getYear(), request.getModel());
 
-    public void register(BikeRegisterEvent bikeRegisterEvent) {
+        bikeRepository.findByPlate(request.getPlate()).ifPresent(existing -> {
+            log.warn("Plate [{}] already exists", request.getPlate());
+            throw new IllegalArgumentException("Plate already registered");
+        });
 
-        var bike = new Bike();
+        Bike bike = Bike.builder()
+                .year(request.getYear())
+                .model(request.getModel())
+                .plate(request.getPlate())
+                .build();
 
-        bike.setIdentifier(bikeRegisterEvent.identifier());
-        bike.setYear(bikeRegisterEvent.year());
-        bike.setModel(bikeRegisterEvent.model());
-        bike.setPlate(bikeRegisterEvent.plate());
+        Bike savedBike = bikeRepository.save(bike);
+        log.info("Bike registered successfully with id: [{}]", savedBike.getId());
 
-        bikeRepository.save(bike);
+        bikeEventPublisher.publish(savedBike);
+
+        return BikeResponse.builder()
+                .id(savedBike.getId())
+                .year(savedBike.getYear())
+                .model(savedBike.getModel())
+                .plate(savedBike.getPlate())
+                .build();
     }
 }
